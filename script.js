@@ -3,9 +3,10 @@ let shipments = JSON.parse(localStorage.getItem('shipments')) || [];
 let scannedCodes = [];
 let uniqueDrivers = JSON.parse(localStorage.getItem('uniqueDrivers')) || [];
 let isScanning = false;
+let html5QrcodeScanner = null;
 
 // Versão do sistema
-const APP_VERSION = '1.2.0'; // Atualizado para suporte a QR Code
+const APP_VERSION = '1.3.0'; // Atualizado para nova biblioteca de QR Code
 
 // Função para mostrar versão
 function displayVersion() {
@@ -203,146 +204,52 @@ function resetForm() {
     document.getElementById('trackingCode').focus();
 }
 
-// Configuração do Quagga
-function initQuagga() {
-    console.log('Iniciando QuaggaJS...');
+// Função para iniciar o scanner
+function startScanning() {
+    console.log('Iniciando scanner de QR Code...');
+    isScanning = true;
     
-    if (typeof Quagga === 'undefined') {
-        alert('Erro: Biblioteca QuaggaJS não foi carregada corretamente.');
-        stopScanning();
-        return;
-    }
-
+    const viewport = document.getElementById('interactive');
+    viewport.style.display = 'block';
+    document.querySelector('.scanner-overlay').style.display = 'block';
+    document.getElementById('startScanButton').style.display = 'none';
+    document.getElementById('stopScanButton').style.display = 'inline-block';
+    
+    // Configurar o scanner
+    html5QrcodeScanner = new Html5Qrcode("interactive");
     const config = {
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector("#interactive"),
-            constraints: {
-                facingMode: "environment",
-                width: { min: 640 },
-                height: { min: 480 },
-                aspectRatio: { min: 1, max: 2 }
-            },
-            area: {
-                top: "30%",
-                right: "20%",
-                left: "20%",
-                bottom: "30%"
-            }
+        fps: 10,
+        qrbox: {
+            width: 250,
+            height: 250
         },
-        locator: {
-            patchSize: "medium",
-            halfSample: true
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 4,
-        decoder: {
-            readers: [
-                "qrcode_reader"  // Alterado para ler apenas QR Code
-            ]
-        },
-        locate: true
+        aspectRatio: 1.0
     };
-
-    try {
-        Quagga.init(config, function(err) {
-            if (err) {
-                console.error('Erro ao inicializar Quagga:', err);
-                // Se falhar com Quagga, tentar inicializar com jsQR
-                initJsQR();
-                return;
-            }
-            console.log("QuaggaJS iniciado com sucesso");
-            Quagga.start();
-        });
-
-        Quagga.onDetected(function(result) {
-            if (result && result.codeResult) {
-                console.log('QR Code detectado:', result.codeResult.code);
-                const code = result.codeResult.code;
-                playBeep();
-                processScannedCode(code);
-            }
-        });
-
-    } catch (error) {
-        console.error('Erro ao configurar Quagga:', error);
-        // Se falhar com Quagga, tentar inicializar com jsQR
-        initJsQR();
-    }
-}
-
-// Função alternativa usando jsQR para melhor suporte a QR Code
-function initJsQR() {
-    const video = document.createElement('video');
-    const canvasElement = document.createElement('canvas');
-    const canvas = canvasElement.getContext('2d');
     
-    document.querySelector("#interactive").appendChild(canvasElement);
-    
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(function(stream) {
-        video.srcObject = stream;
-        video.setAttribute('playsinline', true);
-        video.play();
-        
-        function tick() {
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvasElement.height = video.videoHeight;
-                canvasElement.width = video.videoWidth;
-                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-                
-                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                
-                if (code) {
-                    console.log('QR Code detectado:', code.data);
-                    playBeep();
-                    processScannedCode(code.data);
-                }
-            }
-            if (isScanning) {
-                requestAnimationFrame(tick);
-            }
-        }
-        tick();
-    })
+    html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanError
+    )
     .catch(function(err) {
-        console.error('Erro ao acessar a câmera:', err);
-        alert('Erro ao acessar a câmera. Verifique se concedeu as permissões necessárias.');
+        console.error('Erro ao iniciar scanner:', err);
+        alert('Erro ao iniciar a câmera. Verifique as permissões.');
         stopScanning();
     });
 }
 
-// Função para processar o código lido
-function processScannedCode(code) {
-    if (!scannedCodes.includes(code)) {
-        scannedCodes.push(code);
-        updateInterface();
-        document.getElementById('trackingCode').value = '';
-    }
+// Função chamada quando um QR Code é detectado com sucesso
+function onScanSuccess(decodedText, decodedResult) {
+    console.log('QR Code detectado:', decodedText);
+    playBeep();
+    processScannedCode(decodedText);
 }
 
-// Função para iniciar o scanner
-function startScanning() {
-    console.log('Iniciando processo de scanner...');
-    isScanning = true;
-    
-    const viewport = document.getElementById('interactive');
-    const overlay = document.querySelector('.scanner-overlay');
-    
-    if (!viewport || !overlay) {
-        console.error('Elementos do scanner não encontrados');
-        return;
-    }
-
-    viewport.style.display = 'block';
-    overlay.style.display = 'block';
-    document.getElementById('startScanButton').style.display = 'none';
-    document.getElementById('stopScanButton').style.display = 'inline-block';
-    document.getElementById('stopScanButton').disabled = false;
-
-    initQuagga(); // Iniciar Quagga diretamente sem verificação prévia da câmera
+// Função chamada quando ocorre um erro na leitura
+function onScanError(error) {
+    // Ignorar erros de leitura para não encher o console
+    // console.warn(`Erro de leitura = ${error}`);
 }
 
 // Função para parar o scanner
@@ -350,13 +257,15 @@ function stopScanning() {
     console.log('Parando scanner...');
     isScanning = false;
     
-    try {
-        if (typeof Quagga !== 'undefined' && Quagga) {
-            Quagga.stop();
-            console.log('Scanner parado com sucesso');
-        }
-    } catch (error) {
-        console.error('Erro ao parar Quagga:', error);
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop()
+            .then(() => {
+                console.log('Scanner parado com sucesso');
+            })
+            .catch((err) => {
+                console.error('Erro ao parar scanner:', err);
+            });
+        html5QrcodeScanner = null;
     }
 
     document.getElementById('interactive').style.display = 'none';
@@ -375,12 +284,21 @@ function playBeep() {
     gainNode.connect(audioContext.destination);
 
     oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime); // Frequência mais alta
+    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
     gainNode.gain.setValueAtTime(1, audioContext.currentTime);
 
     oscillator.start();
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
     oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+// Função para processar o código lido
+function processScannedCode(code) {
+    if (!scannedCodes.includes(code)) {
+        scannedCodes.push(code);
+        updateInterface();
+        document.getElementById('trackingCode').value = '';
+    }
 }
 
 // Event Listeners
