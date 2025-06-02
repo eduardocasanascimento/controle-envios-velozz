@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Envios VELOZZ</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="VELOZZ">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .section h2 {
+            color: #444;
+            margin-bottom: 15px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-box p {
+            font-size: 24px;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .code-list {
+            list-style: none;
+            margin-top: 10px;
+        }
+
+        .code-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background-color: #f8f9fa;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+
+        .remove-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .remove-btn:hover {
+            background-color: #c82333;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            width: 90%;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Controle de Envios VELOZZ</h1>
+
+        <!-- Seção 1: Resumo do Dia -->
+        <div class="section">
+            <h2>Resumo do Dia</h2>
+            <div class="stats-container">
+                <div class="stat-box">
+                    <h3>Pacotes Coletados</h3>
+                    <p id="totalPackages">0</p>
+                </div>
+                <div class="stat-box">
+                    <h3>Envios Realizados</h3>
+                    <p id="totalShipments">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção 2: Novo Envio -->
+        <div class="section">
+            <h2>Novo Envio</h2>
+            <div class="form-group">
+                <input type="text" id="trackingCode" placeholder="Bipe o código de barras" autofocus>
+                <button id="addToListBtn">Adicionar à Lista</button>
+            </div>
+            <p>Total: <span id="counter">0 pacote(s)</span></p>
+            <ul id="codeList" class="code-list"></ul>
+            
+            <div class="form-group">
+                <input type="text" id="driverName" placeholder="Nome do motorista responsável" list="driverNamesList">
+                <datalist id="driverNamesList"></datalist>
+            </div>
+            
+            <div class="form-group">
+                <textarea id="observations" placeholder="Informações adicionais (opcional)" rows="3"></textarea>
+            </div>
+            
+            <button id="confirmBtn">Confirmar Envios</button>
+        </div>
+
+        <!-- Seção 3: Consultar Envios -->
+        <div class="section">
+            <h2>Consultar Envios</h2>
+            <div class="form-group">
+                <input type="date" id="searchDate">
+                <button id="searchBtn">Buscar Envios</button>
+            </div>
+            
+            <div id="resultsContainer" hidden>
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <h3>Pacotes na Data</h3>
+                        <p id="pacotesDia">0</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>Envios na Data</h3>
+                        <p id="coletasDia">0</p>
+                    </div>
+                </div>
+                
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Códigos</th>
+                            <th>Motorista</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h2>Confirmar Envio</h2>
+            <div id="modal-details"></div>
+            <div class="modal-buttons">
+                <button onclick="closeModal()">Cancelar</button>
+                <button onclick="saveShipment()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
