@@ -222,15 +222,18 @@ function initQuagga() {
                 aspectRatio: { min: 1, max: 2 }
             },
             area: {
-                top: "0%",
-                right: "0%",
-                left: "0%",
-                bottom: "0%"
+                top: "30%",    // Reduzindo a área de scan para ser mais preciso
+                right: "20%",
+                left: "20%",
+                bottom: "30%"
             }
         },
         locator: {
             patchSize: "medium",
-            halfSample: true
+            halfSample: true,
+            showCanvas: true,  // Mostra a área de detecção
+            showPatches: true, // Mostra os patches de detecção
+            showFoundPatches: true // Mostra os patches encontrados
         },
         numOfWorkers: navigator.hardwareConcurrency || 4,
         decoder: {
@@ -240,7 +243,21 @@ function initQuagga() {
                 "code_128_reader",
                 "code_39_reader",
                 "upc_reader"
-            ]
+            ],
+            debug: {
+                showCanvas: true,
+                showPatches: true,
+                showFoundPatches: true,
+                showSkeleton: true,
+                showLabels: true,
+                showPatchLabels: true,
+                showRemainingPatchLabels: true,
+                boxFromPatches: {
+                    showTransformed: true,
+                    showTransformedBox: true,
+                    showBB: true
+                }
+            }
         },
         locate: true
     };
@@ -314,12 +331,18 @@ function startScanning() {
     overlay.style.display = 'block';
     document.getElementById('startScanButton').style.display = 'none';
     document.getElementById('stopScanButton').style.display = 'inline-block';
+    document.getElementById('stopScanButton').disabled = false; // Garantir que o botão está habilitado
+
+    // Adicionar grade de visualização
+    const scannerGuide = document.createElement('div');
+    scannerGuide.className = 'scanner-guide';
+    viewport.appendChild(scannerGuide);
 
     // Solicitar permissão da câmera antes de iniciar o Quagga
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(function(stream) {
             console.log('Permissão da câmera concedida');
-            stream.getTracks().forEach(track => track.stop()); // Liberar a câmera para o Quagga usar
+            stream.getTracks().forEach(track => track.stop());
             initQuagga();
         })
         .catch(function(err) {
@@ -351,9 +374,20 @@ function stopScanning() {
 
 // Função para tocar o som de bipe
 function playBeep() {
-    const beep = document.getElementById('beepSound');
-    beep.currentTime = 0;
-    beep.play();
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime); // Frequência mais alta
+    gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+
+    oscillator.start();
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    oscillator.stop(audioContext.currentTime + 0.1);
 }
 
 // Event Listeners
