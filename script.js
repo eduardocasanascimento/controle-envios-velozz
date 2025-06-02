@@ -2,6 +2,7 @@
 let shipments = JSON.parse(localStorage.getItem('shipments')) || [];
 let scannedCodes = [];
 let uniqueDrivers = JSON.parse(localStorage.getItem('uniqueDrivers')) || [];
+let isScanning = false;
 
 // Função para atualizar estatísticas diárias
 function updateDailyStats() {
@@ -191,6 +192,76 @@ function resetForm() {
     document.getElementById('trackingCode').focus();
 }
 
+// Configuração do Quagga
+function initQuagga() {
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector("#interactive"),
+            constraints: {
+                facingMode: "environment"
+            },
+        },
+        decoder: {
+            readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader"]
+        }
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            alert("Erro ao iniciar a câmera. Verifique se concedeu as permissões necessárias.");
+            stopScanning();
+            return;
+        }
+        console.log("QuaggaJS iniciado com sucesso");
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        playBeep();
+        processScannedCode(code);
+    });
+}
+
+// Função para processar o código lido
+function processScannedCode(code) {
+    if (!scannedCodes.includes(code)) {
+        scannedCodes.push(code);
+        updateInterface();
+        document.getElementById('trackingCode').value = '';
+    }
+}
+
+// Função para iniciar o scanner
+function startScanning() {
+    isScanning = true;
+    document.getElementById('interactive').style.display = 'block';
+    document.querySelector('.scanner-overlay').style.display = 'block';
+    document.getElementById('startScanButton').style.display = 'none';
+    document.getElementById('stopScanButton').style.display = 'inline-block';
+    initQuagga();
+}
+
+// Função para parar o scanner
+function stopScanning() {
+    isScanning = false;
+    if (Quagga) {
+        Quagga.stop();
+    }
+    document.getElementById('interactive').style.display = 'none';
+    document.querySelector('.scanner-overlay').style.display = 'none';
+    document.getElementById('startScanButton').style.display = 'inline-block';
+    document.getElementById('stopScanButton').style.display = 'none';
+}
+
+// Função para tocar o som de bipe
+function playBeep() {
+    const beep = document.getElementById('beepSound');
+    beep.currentTime = 0;
+    beep.play();
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar data de busca com hoje
@@ -213,4 +284,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addToListBtn').addEventListener('click', addCodeToList);
     document.getElementById('confirmBtn').addEventListener('click', showModal);
     document.getElementById('searchBtn').addEventListener('click', updateSearchResults);
+    
+    // Botões do scanner
+    document.getElementById('startScanButton').addEventListener('click', startScanning);
+    document.getElementById('stopScanButton').addEventListener('click', stopScanning);
 }); 
