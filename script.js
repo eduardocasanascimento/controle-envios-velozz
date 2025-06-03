@@ -1,14 +1,14 @@
 // Variáveis globais
 let shipments = JSON.parse(localStorage.getItem('shipments')) || [];
-let scannedCodes = [];
+let scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
 let uniqueDrivers = JSON.parse(localStorage.getItem('uniqueDrivers')) || [];
 let isScanning = false;
 let html5QrcodeScanner = null;
 let lastScanTime = 0;
-let errorBeep = new Audio('data:audio/mp3;base64,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');
+let errorBeep = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1NW1tbW1tbaGhoaGhoaHd3d3d3d4aGhoaGhpSUlJSUlKOjo6Ojo7GxsbGxsb+/v7+/v87Ozs7Oztzc3Nzc3Orq6urq6vn5+fn5+f////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAQKAAAAAAAAHjOZTf9/AAAAAAAAAAAAAAAAAAAAAP/7kGQAAANUMEoFPeACNQV40KEYABEY41g5vAAA9RjpZxRwAImU+W8eshaFpAQgALAAYALATx/nYDYCMJ0HITQYYA7AH4c7MoGsnCMU5pnW+OQnBcDrQ9Xx7w37/D+PimYavV8elKUpT5fqx5VjV6vZ38eJR48eRKa9KUp7v396UgPHkQwMAAAAAA//8MAOp39CECAAhlIEEIIECBAgTT1oj///tEQYT0wgEIYxgDC09aIiE7u7u7uIiIz+LtoIQGE/+XAGYLjpTAIOGYYy0ZACgDgSNFxC7YYiINocwERjAEDhIy0mRoGwAE7lOTBsGhj1qrXNCU9GrgwSPr80jj0dIpT9DRUNHKJbRxiWSiifVHuD2b0EbjLkOUzSXztP3uE1JpHzV6NPq+f3P5T0/f/lNH7lWTavQ5Xz1yLVe653///qf93B7f/vMdaKJAAJAMAIwIMAHMpzDkoYwD8CR717zVb8/p54P3MikXGCEWhQOEAOAdP6v8b8oNL/EzdnROC8Zo+z+71O8VVAGIKFEglKbidkoLam0mAFiwo0ZoVExf/7kmQLgAQyZFxvPWAENcVKXeK0ABAk2WFMaSNIzBMptBYfArbkZgpWjEQpcmjxQoG2qREWQcvpzuuIm29THt3ElhDNlrXV///XTGbm7Kbx0ymcRX///x7GVvquf5vk/dPs0Wi5Td1vggDxqbNII4bAPTU3Ix5h9FJTe7zv1LHG/uPsPrvth0ejchVzVT3giirs6sQAACgQAAIAdaXbRAYra/2t0//3HwqLKIlBOJhOg4BzAOkt+MOL6H8nlNvKyi3rOnqP//zf6AATwBAKIcHKixxwjl1TjDVIrvTqdmKQOFQBUBDwZ1EhHlDEGEVyGQWBAHrcJgRSXYbkvHK/8/6rbYjs4Qj0C8mRy2hwRv/82opGT55fROgRoBTjanaiQiMRHUu1/P3V9yGFffaVv78U1/6l/kpo0cz73vuSv/9GeaqDVRA5bWdHRKQKIEAAAAoIktKeEmdQFKN5sguv/ZSC0oxCAR7CzcJgEsd8cA0M/x0tzv15E7//5L5KCqoIAAmBFIKM1UxYtMMFjLKESTE8lhaelUyCBYeA2IN4rK1iDt');
 
 // Versão do sistema
-const APP_VERSION = '1.3.3'; // Atualizado com correções
+const APP_VERSION = '1.3.2'; // Atualizado com correções
 
 // Função para mostrar versão
 function displayVersion() {
@@ -154,10 +154,29 @@ function closeModal() {
     document.getElementById('confirmation-modal').style.display = 'none';
 }
 
+// Função para mostrar notificação toast
+function showToast(message, isError = false) {
+    // Remove toast anterior se existir
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${isError ? 'toast-error' : 'toast-success'}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Remove o toast após 2 segundos
+    setTimeout(() => {
+        toast.remove();
+    }, 2000);
+}
+
 // Função chamada quando um QR Code é detectado com sucesso
 function onScanSuccess(decodedText, decodedResult) {
     const currentTime = new Date().getTime();
-    if (currentTime - lastScanTime < 1000) { // Aumentado para 1 segundo
+    if (currentTime - lastScanTime < 1000) {
         console.log('Aguardando delay entre leituras...');
         return;
     }
@@ -168,13 +187,15 @@ function onScanSuccess(decodedText, decodedResult) {
     if (scannedCodes.includes(decodedText)) {
         console.log('Código duplicado detectado');
         errorBeep.play();
-        alert('Este código já foi escaneado!');
+        showToast('Código já escaneado!', true);
         return;
     }
     
     // Adiciona o código à lista
     scannedCodes.push(decodedText);
+    localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
     playBeep();
+    showToast('Código registrado com sucesso!');
     updateInterface();
     
     // Feedback visual
@@ -183,6 +204,9 @@ function onScanSuccess(decodedText, decodedResult) {
     setTimeout(() => {
         trackingInput.value = '';
     }, 1000);
+
+    // Dispara evento de atualização
+    window.dispatchEvent(new CustomEvent('codesUpdated'));
 }
 
 // Função para processar código escaneado (manualmente ou via scanner)
@@ -190,7 +214,7 @@ function processScannedCode(code) {
     if (!code) return;
     
     const now = Date.now();
-    if (now - lastScanTime < 1000) { // Delay de 1 segundo
+    if (now - lastScanTime < 1000) {
         console.log('Aguardando delay entre leituras...');
         return;
     }
@@ -198,15 +222,20 @@ function processScannedCode(code) {
     if (scannedCodes.includes(code)) {
         console.log('Código duplicado detectado');
         errorBeep.play();
-        alert('Este código já foi escaneado!');
+        showToast('Código já escaneado!', true);
         return;
     }
     
     lastScanTime = now;
     scannedCodes.push(code);
+    localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
     playBeep();
+    showToast('Código registrado com sucesso!');
     updateInterface();
     document.getElementById('trackingCode').value = '';
+
+    // Dispara evento de atualização
+    window.dispatchEvent(new CustomEvent('codesUpdated'));
 }
 
 // Função para salvar envio
@@ -402,13 +431,35 @@ window.addEventListener('storage', function(e) {
         if (document.getElementById('searchDate').value) {
             updateSearchResults();
         }
+    } else if (e.key === 'todayScannedCodes') {
+        scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
+        updateInterface();
     }
+});
+
+// Adicionar listener para atualizações locais
+window.addEventListener('codesUpdated', function() {
+    updateInterface();
+    updateDailyStats();
 });
 
 // Atualizar estatísticas ao carregar a página
 window.addEventListener('load', function() {
+    // Limpar códigos escaneados se for um novo dia
+    const today = new Date().toISOString().split('T')[0];
+    const lastScanDate = localStorage.getItem('lastScanDate');
+    
+    if (lastScanDate !== today) {
+        scannedCodes = [];
+        localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
+        localStorage.setItem('lastScanDate', today);
+    } else {
+        scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
+    }
+    
     updateDailyStats();
     displayDriverSuggestions();
+    updateInterface();
 });
 
 // Event Listeners
