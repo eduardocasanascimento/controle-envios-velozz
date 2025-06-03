@@ -1,7 +1,7 @@
 // Variáveis globais
-let shipments = JSON.parse(localStorage.getItem('shipments')) || [];
-let scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
-let uniqueDrivers = JSON.parse(localStorage.getItem('uniqueDrivers')) || [];
+let shipments = [];
+let scannedCodes = [];
+let uniqueDrivers = [];
 let isScanning = false;
 let html5QrcodeScanner = null;
 let lastScanTime = 0;
@@ -173,43 +173,45 @@ function showToast(message, isError = false) {
     }, 2000);
 }
 
-// Função chamada quando um QR Code é detectado com sucesso
-function onScanSuccess(decodedText, decodedResult) {
-    const currentTime = new Date().getTime();
-    if (currentTime - lastScanTime < 1000) {
-        console.log('Aguardando delay entre leituras...');
-        return;
-    }
+// Função para inicializar dados do Firebase
+function initializeFirebase() {
+    const today = new Date().toISOString().split('T')[0];
     
-    lastScanTime = currentTime;
-    console.log('QR Code detectado:', decodedText);
-    
-    if (scannedCodes.includes(decodedText)) {
-        console.log('Código duplicado detectado');
-        errorBeep.play();
-        showToast('Código já escaneado!', true);
-        return;
-    }
-    
-    // Adiciona o código à lista
-    scannedCodes.push(decodedText);
-    localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
-    playBeep();
-    showToast('Código registrado com sucesso!');
-    updateInterface();
-    
-    // Feedback visual
-    const trackingInput = document.getElementById('trackingCode');
-    trackingInput.value = decodedText;
-    setTimeout(() => {
-        trackingInput.value = '';
-    }, 1000);
+    // Carregar dados do dia atual
+    database.ref('dailyData/' + today).once('value').then((snapshot) => {
+        const data = snapshot.val() || {};
+        scannedCodes = data.scannedCodes || [];
+        shipments = data.shipments || [];
+        updateInterface();
+        updateDailyStats();
+    });
 
-    // Dispara evento de atualização
-    window.dispatchEvent(new CustomEvent('codesUpdated'));
+    // Ouvir mudanças em tempo real
+    database.ref('dailyData/' + today).on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        scannedCodes = data.scannedCodes || [];
+        shipments = data.shipments || [];
+        updateInterface();
+        updateDailyStats();
+    });
+
+    // Carregar motoristas únicos
+    database.ref('uniqueDrivers').once('value').then((snapshot) => {
+        uniqueDrivers = snapshot.val() || [];
+        displayDriverSuggestions();
+    });
 }
 
-// Função para processar código escaneado (manualmente ou via scanner)
+// Função para atualizar dados no Firebase
+function updateFirebaseData() {
+    const today = new Date().toISOString().split('T')[0];
+    database.ref('dailyData/' + today).set({
+        scannedCodes: scannedCodes,
+        shipments: shipments
+    });
+}
+
+// Função para processar código escaneado
 function processScannedCode(code) {
     if (!code) return;
     
@@ -228,14 +230,11 @@ function processScannedCode(code) {
     
     lastScanTime = now;
     scannedCodes.push(code);
-    localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
+    updateFirebaseData(); // Atualiza dados no Firebase
     playBeep();
     showToast('Código registrado com sucesso!');
     updateInterface();
     document.getElementById('trackingCode').value = '';
-
-    // Dispara evento de atualização
-    window.dispatchEvent(new CustomEvent('codesUpdated'));
 }
 
 // Função para salvar envio
@@ -250,23 +249,20 @@ function saveShipment() {
     };
     
     shipments.push(shipment);
-    localStorage.setItem('shipments', JSON.stringify(shipments));
     
+    // Atualizar motoristas únicos
     if (!uniqueDrivers.includes(shipment.driver)) {
         uniqueDrivers.push(shipment.driver);
-        localStorage.setItem('uniqueDrivers', JSON.stringify(uniqueDrivers));
-        displayDriverSuggestions();
+        database.ref('uniqueDrivers').set(uniqueDrivers);
     }
     
+    updateFirebaseData();
     generateTXT(shipment);
     resetForm();
     updateDailyStats();
     closeModal();
     
-    // Atualiza as estatísticas em tempo real para todos os usuários
-    window.dispatchEvent(new Event('storage'));
-    
-    alert('Envio registrado com sucesso!');
+    showToast('Envio registrado com sucesso!');
 }
 
 // Função para gerar arquivo TXT
@@ -423,48 +419,12 @@ function playFallbackBeep() {
     oscillator.stop(audioContext.currentTime + 0.1);
 }
 
-// Adicionar listener para atualizações em tempo real
-window.addEventListener('storage', function(e) {
-    if (e.key === 'shipments') {
-        shipments = JSON.parse(localStorage.getItem('shipments')) || [];
-        updateDailyStats();
-        if (document.getElementById('searchDate').value) {
-            updateSearchResults();
-        }
-    } else if (e.key === 'todayScannedCodes') {
-        scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
-        updateInterface();
-    }
-});
-
-// Adicionar listener para atualizações locais
-window.addEventListener('codesUpdated', function() {
-    updateInterface();
-    updateDailyStats();
-});
-
-// Atualizar estatísticas ao carregar a página
-window.addEventListener('load', function() {
-    // Limpar códigos escaneados se for um novo dia
-    const today = new Date().toISOString().split('T')[0];
-    const lastScanDate = localStorage.getItem('lastScanDate');
-    
-    if (lastScanDate !== today) {
-        scannedCodes = [];
-        localStorage.setItem('todayScannedCodes', JSON.stringify(scannedCodes));
-        localStorage.setItem('lastScanDate', today);
-    } else {
-        scannedCodes = JSON.parse(localStorage.getItem('todayScannedCodes')) || [];
-    }
-    
-    updateDailyStats();
-    displayDriverSuggestions();
-    updateInterface();
-});
-
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, inicializando...');
+    
+    // Inicializar Firebase
+    initializeFirebase();
     
     // Mostrar versão
     displayVersion();
@@ -472,18 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar data de busca com hoje
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('searchDate').value = today;
-    
-    // Atualizar estatísticas e sugestões
-    updateDailyStats();
-    displayDriverSuggestions();
-    
-    // Adicionar código ao pressionar Enter
-    document.getElementById('trackingCode').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addCodeToList();
-        }
-    });
     
     // Configurar botões
     const startScanButton = document.getElementById('startScanButton');
@@ -517,6 +465,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (searchBtn) {
         searchBtn.addEventListener('click', updateSearchResults);
     }
+    
+    // Adicionar código ao pressionar Enter
+    document.getElementById('trackingCode').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addCodeToList();
+        }
+    });
     
     console.log('Event listeners configurados');
 }); 
