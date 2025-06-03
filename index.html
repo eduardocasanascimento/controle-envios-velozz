@@ -13,6 +13,29 @@
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
+    
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <!-- Firebase Database -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <!-- Configuração do Firebase -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJ5mKVwxn_7KyPW4P4xZH4XtGxABQK8Qk",
+            authDomain: "controle-envios-velozz.firebaseapp.com",
+            databaseURL: "https://controle-envios-velozz-default-rtdb.firebaseio.com",
+            projectId: "controle-envios-velozz",
+            storageBucket: "controle-envios-velozz.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef0123456789"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+    </script>
+
     <script>
         // Verificar se QuaggaJS foi carregado
         window.addEventListener('load', function() {
