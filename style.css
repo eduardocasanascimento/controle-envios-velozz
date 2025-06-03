@@ -77,9 +77,8 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Estilo para a área de scan do QR Code */
+/* Estilo para a área de scan do QR Code (manter para compatibilidade Html5Qrcode, mas nossos overlays são personalizados) */
 #qr-shaded-region {
-    /* Existing styles, just ensure it's well-positioned */
     border: 2px solid #00ff00 !important;
     border-radius: 5px;
 }
@@ -134,13 +133,14 @@
 .scanner-laser-line {
     position: absolute;
     top: 50%;
-    left: 10%;
-    width: 80%;
+    left: 50%;
+    width: 80%; /* Ajuste conforme a qrbox config */
     height: 2px;
     background: red;
     box-shadow: 0 0 10px red;
     animation: scan-animation 2s infinite alternate ease-in-out;
     z-index: 10001; /* Above the video but below buttons */
+    transform: translate(-50%, -50%); /* Centraliza a linha de laser */
 }
 
 @keyframes scan-animation {
@@ -151,16 +151,17 @@
 
 .scanner-border-corners {
     position: absolute;
-    top: 30%;
-    left: 20%;
-    width: 60%;
-    height: 40%;
+    top: 50%;
+    left: 50%;
+    width: 250px; /* Ajuste para corresponder ao qrbox.width na config do scanner */
+    height: 250px; /* Ajuste para corresponder ao qrbox.height na config do scanner */
+    transform: translate(-50%, -50%); /* Centraliza a caixa de bordas */
     z-index: 10001;
-    border: 2px solid transparent; /* Base transparent border */
+    /* Remover a borda principal se os cantos individuais serão usados */
+    border: none;
 }
 
-.scanner-border-corners::before,
-.scanner-border-corners::after {
+.scanner-border-corners > div { /* Estilo para todos os divs de canto */
     content: '';
     position: absolute;
     width: 20px;
@@ -169,35 +170,30 @@
     border-style: solid;
 }
 
-.scanner-border-corners::before {
-    top: -2px;
-    left: -2px;
+.scanner-border-corners .corner-top-left {
+    top: 0;
+    left: 0;
     border-width: 2px 0 0 2px;
 }
 
-.scanner-border-corners::after {
-    bottom: -2px;
-    right: -2px;
-    border-width: 0 2px 2px 0;
-}
-
-.scanner-border-corners.top-right {
-    top: -2px;
-    right: -2px;
+.scanner-border-corners .corner-top-right {
+    top: 0;
+    right: 0;
     border-width: 2px 2px 0 0;
 }
 
-.scanner-border-corners.bottom-left {
-    bottom: -2px;
-    left: -2px;
+.scanner-border-corners .corner-bottom-left {
+    bottom: 0;
+    left: 0;
     border-width: 0 0 2px 2px;
 }
 
-.scanner-border-corners.bottom-right {
-    bottom: -2px;
-    right: -2px;
+.scanner-border-corners .corner-bottom-right {
+    bottom: 0;
+    right: 0;
     border-width: 0 2px 2px 0;
 }
+
 
 /* Styles for the new focus button */
 #focusScanner {
